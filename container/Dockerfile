@@ -1,0 +1,1 @@
+FROM pypiserver/pypiserver:latest
