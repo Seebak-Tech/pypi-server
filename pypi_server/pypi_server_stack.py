@@ -5,6 +5,8 @@ from aws_cdk import (
     aws_efs as efs,
     #  aws_iam as iam,
     aws_elasticloadbalancingv2 as elbv2,
+    aws_route53 as route53,
+    aws_route53_targets as targets,
     CfnParameter, CfnOutput, Duration, Stack,
 )
 from constructs import Construct
@@ -27,27 +29,27 @@ class PypiServerStack(Stack):
             default='pypiserver'
         )
 
-        container_repo_name = 'pypiserv-containers'
         cluster_name = 'pypiserv_clus'
         service_name = 'pypiserv_serv'
+        container_repo_name = 'pypiserver/pypiserver:latest'
 
         # ==================================================
         # ================= IAM ROLE =======================
         # ==================================================
         #  role = iam.Role(
-            #  scope=self,
-            #  id='TASKROLE',
-            #  assumed_by=iam.ServicePrincipal(service='ecs-tasks.amazonaws.com')
+        #      scope=self,
+        #      id='TASKROLE',
+        #      assumed_by=iam.ServicePrincipal(service='ecs-tasks.amazonaws.com')
         #  )
 #
         #  role.add_managed_policy(
-            #  iam.ManagedPolicy
-               #  .from_aws_managed_policy_name('AmazonS3FullAccess')
+        #      iam.ManagedPolicy
+        #         .from_aws_managed_policy_name('AmazonS3FullAccess')
         #  )
 #
         #  role.add_managed_policy(
-            #  iam.ManagedPolicy
-               #  .from_aws_managed_policy_name('AmazonECS_FullAccess')
+        #      iam.ManagedPolicy
+        #         .from_aws_managed_policy_name('AmazonECS_FullAccess')
         #  )
 #
         # ==================================================
@@ -153,7 +155,7 @@ class PypiServerStack(Stack):
         container = task_definition.add_container(
             id='Pypiserver',
             image=ecs.ContainerImage.from_registry(
-                "pypiserver/pypiserver:latest"
+                container_repo_name
             ),
             memory_limit_mib=512,
             cpu=512,
@@ -179,9 +181,6 @@ class PypiServerStack(Stack):
         task_definition.add_volume(
             name="efs-volume",
             efs_volume_configuration=efs_volume_configuration
-            #  efs_volume_configuration=ecs.EfsVolumeConfiguration(
-            #      file_system_id=imported_file_system.file_system_id
-            #  )
         )
 
         # Create a Service
@@ -234,6 +233,23 @@ class PypiServerStack(Stack):
             "echo \"${file_system_id_1}.efs." + Stack.of(self).region +
             ".amazonaws.com:/ ${efs_mount_point_1} nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0\" >> /etc/fstab",
             "mount -a -t efs,nfs4 defaults"
+        )
+
+        route53_hosted_zone = route53.HostedZone.from_lookup(
+            scope=self,
+            id="HostedZone",
+            domain_name="seebak.com.mx"
+        )
+        route53.ARecord(
+            scope=self,
+            id="AliasRecord",
+            zone=route53_hosted_zone,
+            target=route53.RecordTarget.from_alias(
+                targets.LoadBalancerTarget(
+                    lb
+                )
+            ),
+            record_name="pypi.srvc"
         )
 
         # ==================================================
