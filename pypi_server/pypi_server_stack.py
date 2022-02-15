@@ -94,7 +94,7 @@ class PypiServerStack(Stack):
         imported_file_system = efs.FileSystem.from_file_system_attributes(
             scope=self,
             id="efs-storage",
-            file_system_id="fs-0f2e4b0cd5293b4f5",  # You can also use fileSystemArn instead of fileSystemId.
+            file_system_id="fs-02396aba539111de6",  # You can also use fileSystemArn instead of fileSystemId.
             security_group=ec2.SecurityGroup.from_security_group_id(
                 scope=self,
                 id="SG",
